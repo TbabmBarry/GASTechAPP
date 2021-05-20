@@ -1,18 +1,28 @@
-from random import randint
+import os
+import json
+import geojson
 import pandas as pd
+from random import randint
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from core.db_config import SQLALCHEMY_DATABASE_URI
 
-
 from dateutil.parser import parse
 from datetime import datetime
 
 app = Flask(__name__)
-
+cors = CORS(app, resources={r"/*": {"origins": "*"}})
 db_conn = SQLALCHEMY_DATABASE_URI
+
+
+@app.route("/fetch_map")
+def fetch_map():
+    with open("./static/Abila.geojson") as map_file:
+        map = json.load(map_file)
+    return map
 
 @app.route("/fetch_person", methods=["GET"])
 def fetch_person():
@@ -46,20 +56,19 @@ def fetch_gps():
     db = sessionmaker(bind = engine)()
     GPS = Base.classes.gps
     result_list = db.query(GPS).filter(GPS.id == car_id).filter(GPS.Timestamp.between(time_start, time_end))
-    # gps_res = []
-    # for result in result_list:
-    #     gps_record = {
-    #         "timestamp": result.Timestamp,
-    #         "car_id": result.id,
-    #         "latitude": str(result.lat),
-    #         "longitude": str(result.long),
-    #     }
-    #     gps_res.append(gps_record)
     gps_paths = pd.read_sql(result_list.statement, db.bind)
-    result = []
-    for _, row in gps_paths.iterrows():
-        result.append(dict(row))
-    return jsonify(result)
+    gps_paths["Timestamp"] = pd.to_datetime(gps_paths.Timestamp)
+    gps_paths["path_id"] = gps_paths.Timestamp.diff().dt.seconds.ge(120).cumsum()
+    gps_paths["Timestamp"] = gps_paths.Timestamp.dt.strftime('%Y-%m-%d %H:%M:%S')
+    features = []
+    gps_paths_groupby = gps_paths.groupby("path_id")
+    for path_id, path_group in gps_paths_groupby:
+        features.append(geojson.Feature(
+            geometry=geojson.LineString(
+                coordinates=path_group.reset_index()[['long', 'lat']].values.astype(float).tolist()),
+            properties={"path_id": path_id}))
+    feature_collection = geojson.FeatureCollection(features)
+    return jsonify(feature_collection)
     
     # return jsonify(gps_paths)
 
