@@ -9,7 +9,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from core.db_config import SQLALCHEMY_DATABASE_URI
 from utils.path_parser import routeParser
-from utils.freq_hour_parser import freqByHourParser
+from utils.freq_parser import freqByHourParser
+from utils.freq_parser import freqByDayParser
 from dateutil.parser import parse
 from datetime import datetime
 
@@ -75,7 +76,13 @@ def fetch_gps():
 @app.route("/fetch_heatmap", methods=["GET"])
 def fetch_heatmap():
     cc_df = pd.read_csv("./static/cc_data.csv")
-    return freqByHourParser(cc_df)
+    loyalty_df = pd.read_csv("./static/loyalty.csv")
+    res_cc = freqByHourParser(cc_df)
+    res_loyalty = freqByDayParser(loyalty_df)
+    return jsonify({
+        "cc": res_cc,
+        "loyalty": res_loyalty
+    })
 
 if __name__ == '__main__':
     app.run()
