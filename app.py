@@ -8,7 +8,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 from core.db_config import SQLALCHEMY_DATABASE_URI
-from utils.path_parser import routeParser
+from utils.path_parser import routeParser, carRouteParser
 from utils.freq_parser import freqByHourParser
 from utils.freq_parser import freqByDayParser
 from dateutil.parser import parse
@@ -45,7 +45,8 @@ def fetch_person():
 
 @app.route("/fetch_gps", methods=["GET","POST"])
 def fetch_gps():
-    car_id = request.args.get("id")
+    car_id = request.args.get("id").split(",")
+    car_id = list(map(int, car_id))
     time_start = request.args.get("time_start")
     time_end = request.args.get("time_end")
     time_start = datetime.strptime(time_start, "%y-%m-%d %H:%M")
@@ -55,9 +56,10 @@ def fetch_gps():
     Base.prepare(engine, reflect = True)
     db = sessionmaker(bind = engine)()
     GPS = Base.classes.gps
-    result_list = db.query(GPS).filter(GPS.id == car_id).filter(GPS.Timestamp.between(time_start, time_end))
+    result_list = db.query(GPS).filter(GPS.id.in_(car_id)).filter(GPS.Timestamp.between(time_start, time_end))
     gps_paths = pd.read_sql(result_list.statement, db.bind)
-    feature_collection = routeParser(gps_paths)
+    # feature_collection = routeParser(gps_paths)
+    feature_collection = carRouteParser(gps_paths)
     return jsonify(feature_collection)
 
 
