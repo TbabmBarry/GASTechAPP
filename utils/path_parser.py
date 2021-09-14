@@ -18,6 +18,8 @@ def routeParser(gps_paths):
     return feature_collection
 
 def carRouteParser(gps):
+    # if gps.empty:
+    #     return "error"
     gps["Timestamp"] = pd.to_datetime(gps.Timestamp)
     gps_by_car = gps.groupby("id")
     car_paths = dict()

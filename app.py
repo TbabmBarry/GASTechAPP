@@ -1,4 +1,3 @@
-import os
 import json
 import pandas as pd
 from random import randint
@@ -30,7 +29,6 @@ def fetch_person():
     Base = automap_base()
     Base.prepare(engine, reflect = True)
     db = sessionmaker(bind = engine)()
-    GPS = Base.classes.gps
     CAR_ASGMT = Base.classes.car_assignments
     result_list = db.query(CAR_ASGMT).filter(CAR_ASGMT.CarID.isnot(None))
     person_list = []
@@ -60,6 +58,8 @@ def fetch_gps():
     gps_paths = pd.read_sql(result_list.statement, db.bind)
     # feature_collection = routeParser(gps_paths)
     feature_collection = carRouteParser(gps_paths)
+    # feature_collection = time_end
+
     return jsonify(feature_collection)
 
 
